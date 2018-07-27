@@ -1,4 +1,4 @@
-DB_BUILD = deps/db-6.0.20/build_unix
+DB_BUILD = deps/db-6.2.23/build_unix
 
 all: build_db
 	node-gyp build
