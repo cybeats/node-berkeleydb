@@ -115,7 +115,8 @@ void Db::Open(const Nan::FunctionCallbackInfo<Value>& args) {
     env->txn_begin(env, NULL, &tid, 0);
   }
   String::Utf8Value fname(args[0]);
-  int ret = store->open(tid, *fname, NULL, DB_BTREE, DB_CREATE|DB_THREAD, 0);
+  String::Utf8Value db(args[1]);
+  int ret = store->open(tid, *fname, (args[1]->IsString()) ? *db : NULL, DB_BTREE, DB_CREATE|DB_THREAD, 0);
   if (tid) {
     tid->commit(tid, 0);
   }

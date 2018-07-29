@@ -45,8 +45,9 @@ db.close()
 * `new bdb.Db([dbenv])` - Creates a new Db instance.
   - param: `[dbenv]` - `[bdb.DbEnv]` - Optional, but needed if you wish to use transactions.
   - returns `[bdb.Db]` - A new Db instance.
-* `open(filename)` - Opens a local db file. Will create file if it doesn't exist.
+* `open(filename, [db])` - Opens a local db file. Will create file if it doesn't exist.
   - param: `filename` - `[String]` - The filename of the db to load, relative to the process.cwd.
+  - param: `db` - `[String]` - The name of the sub-database to load.
   - returns `[number]` - 0 if successful, otherwise an error occurred.
 * `close()` - Closes a database file. This is neccessary before shutdown to avoid data corruption.
   - returns `[number]` - 0 if successful, otherwise an error occurred.
