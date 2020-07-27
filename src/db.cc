@@ -92,7 +92,9 @@ void Db::New(const Nan::FunctionCallbackInfo<Value>& args) {
     _dbenv = dbenv->get_env();
   }
   
-  int ret = store->create(_dbenv, 0);
+  int dbFlags((args[1]->IsInt32()) ? args[1]->Int32Value() : 0);
+
+  int ret = store->create(_dbenv, dbFlags);
 
   if (ret) {
     return Nan::ThrowTypeError("Could not create DB object");
@@ -116,7 +118,10 @@ void Db::Open(const Nan::FunctionCallbackInfo<Value>& args) {
   }
   String::Utf8Value fname(args[0]);
   String::Utf8Value db(args[1]);
-  int ret = store->open(tid, *fname, (args[1]->IsString()) ? *db : NULL, DB_BTREE, DB_CREATE|DB_THREAD, 0);
+  DBTYPE dbType = static_cast<DBTYPE>((args[2]->IsInt32()) ? args[2]->Int32Value() : DB_BTREE);
+  int dbFlags((args[3]->IsInt32()) ? args[3]->Int32Value() : DB_CREATE|DB_THREAD);
+
+  int ret = store->open(tid, *fname, (args[1]->IsString()) ? *db : NULL, dbType, dbFlags, 0);
   if (tid) {
     tid->commit(tid, 0);
   }

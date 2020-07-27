@@ -56,7 +56,9 @@ void DbEnv::New(const Nan::FunctionCallbackInfo<Value>& args) {
   DbEnv* env = new DbEnv();
   env->Wrap(args.This());
 
-  int ret = env->create(0);
+  int dbFlags((args[0]->IsInt32()) ? args[0]->Int32Value() : 0);
+
+  int ret = env->create(dbFlags);
   if (ret) {
     Nan::ThrowTypeError("Could not create DBENV object");
     return;
@@ -73,7 +75,8 @@ void DbEnv::Open(const Nan::FunctionCallbackInfo<Value>& args) {
 
   DbEnv* env = Nan::ObjectWrap::Unwrap<DbEnv>(args.This());
   String::Utf8Value db_name(args[0]);
-  int ret = env->open(*db_name, DB_INIT_TXN|DB_INIT_LOG|DB_INIT_LOCK|DB_INIT_MPOOL|DB_CREATE|DB_THREAD, 0);
+  int dbFlags((args[1]->IsInt32()) ? args[1]->Int32Value() : DB_INIT_TXN|DB_INIT_LOG|DB_INIT_LOCK|DB_INIT_MPOOL|DB_CREATE|DB_THREAD);
+  int ret = env->open(*db_name, dbFlags, 0);
   args.GetReturnValue().Set(Nan::New(double(ret)));
 }
 

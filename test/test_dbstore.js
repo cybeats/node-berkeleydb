@@ -8,8 +8,9 @@ var db = new bdb.Db(dbenv);
 
 var assert = require('assert');
 
-var rand = (Math.random() * 1e6).toFixed(0);
-var filename = `foo-${rand}.db`;
+var rand = () => (Math.random() * 1e6).toFixed(0);
+var getFilename = () => `foo-${rand()}.db`
+var filename = getFilename();
 
 var openRes = db.open(filename);
 console.log("opened", filename, "ret=", openRes);
@@ -190,10 +191,49 @@ function test_cursors() {
 }
 
 function test_flags() {
-  console.log(bdb.Flags);
-  console.log(bdb.DbTypes);
+  console.log("-- test_flags");
+  assert(Object.keys(bdb.Flags).length == 241);
+  assert(Object.keys(bdb.DbTypes).length == 6);
+
+  var db2 = new bdb.Db(dbenv);
+  var filename2 = "thisdoesntexist.db";
+  var openRes2 = db2.open(filename2, null, null, 0);
+  console.log("open should fail on", filename2, "ret=", openRes2);
+  assert(openRes2 == 2);
 }
 
+function test_hash() {
+  console.log("-- test_hash");
+  var db2 = new bdb.Db(dbenv);
+  var filename2 = getFilename();
+  var openRes2 = db2.open(filename2, null, bdb.DbTypes.DB_HASH);
+  console.log("opened hash", filename2, "ret=", openRes2);
+  assert(openRes2 == 0);
+  db2.put("key1", "value1");
+  db2.put("key2", "value2");
+  assert(db2.get("key1") == "value1");
+  assert(db2.get("key2") == "value2");
+  db2.close();
+}
+
+function test_subdbs() {
+  console.log("-- test_subdbs");
+  var db2 = new bdb.Db(dbenv);
+  var db3 = new bdb.Db(dbenv);
+  var filename2 = getFilename();
+  var openRes2 = db2.open(filename2, "hash", bdb.DbTypes.DB_HASH);
+  console.log("opened hash", filename2, "ret=", openRes2);
+  assert(openRes2 == 0);
+  var openRes3 = db3.open(filename2, "tree", bdb.DbTypes.DB_BTREE);
+  console.log("opened tree", filename2, "ret=", openRes3);
+  assert(openRes3 == 0);
+  db2.put("key1", "value1");
+  db3.put("key1", "value1");
+  assert(db2.get("key1") == "value1");
+  assert(db3.get("key1") == "value1");
+  db2.close();
+  db3.close();
+}
 
 test_put_get_del_trunc();
 test_json();
@@ -201,6 +241,8 @@ test_encoding();
 test_transactions();
 test_cursors();
 test_flags();
+test_hash();
+test_subdbs();
 
 var closeDb = db.close();
 var closeEnv = dbenv.close();
