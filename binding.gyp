@@ -7,7 +7,8 @@
         "src/db.cc",
         "src/dbenv.cc",
         "src/dbtxn.cc",
-        "src/dbcursor.cc"
+        "src/dbcursor.cc",
+        "src/flags.cc"
       ],
       "include_dirs": [
         "../include",

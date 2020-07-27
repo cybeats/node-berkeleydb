@@ -189,11 +189,18 @@ function test_cursors() {
   cursor.close();
 }
 
-test_put_get_del_trunc();
-test_json();
-test_encoding();
-test_transactions();
-test_cursors();
+function test_flags() {
+  console.log(bdb.Flags);
+  console.log(bdb.DbTypes);
+}
+
+
+// test_put_get_del_trunc();
+// test_json();
+// test_encoding();
+// test_transactions();
+// test_cursors();
+test_flags();
 
 var closeDb = db.close();
 var closeEnv = dbenv.close();
