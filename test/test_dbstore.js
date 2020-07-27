@@ -195,11 +195,11 @@ function test_flags() {
 }
 
 
-// test_put_get_del_trunc();
-// test_json();
-// test_encoding();
-// test_transactions();
-// test_cursors();
+test_put_get_del_trunc();
+test_json();
+test_encoding();
+test_transactions();
+test_cursors();
 test_flags();
 
 var closeDb = db.close();
