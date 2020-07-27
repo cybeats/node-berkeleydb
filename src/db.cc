@@ -119,7 +119,7 @@ void Db::Open(const Nan::FunctionCallbackInfo<Value>& args) {
   String::Utf8Value fname(args[0]);
   String::Utf8Value db(args[1]);
   DBTYPE dbType = static_cast<DBTYPE>((args[2]->IsInt32()) ? args[2]->Int32Value() : DB_BTREE);
-  int dbFlags((args[3]->IsInt32()) ? args[3]->Int32Value() : DB_CREATE|DB_THREAD);
+  int dbFlags((args[3]->IsInt32()) ? args[3]->Int32Value() : DB_CREATE);
 
   int ret = store->open(tid, *fname, (args[1]->IsString()) ? *db : NULL, dbType, dbFlags, 0);
   if (tid) {

@@ -75,7 +75,7 @@ void DbEnv::Open(const Nan::FunctionCallbackInfo<Value>& args) {
 
   DbEnv* env = Nan::ObjectWrap::Unwrap<DbEnv>(args.This());
   String::Utf8Value db_name(args[0]);
-  int dbFlags((args[1]->IsInt32()) ? args[1]->Int32Value() : DB_INIT_TXN|DB_INIT_LOG|DB_INIT_LOCK|DB_INIT_MPOOL|DB_CREATE|DB_THREAD);
+  int dbFlags((args[1]->IsInt32()) ? args[1]->Int32Value() : DB_INIT_TXN|DB_INIT_LOG|DB_INIT_LOCK|DB_INIT_MPOOL|DB_CREATE);
   int ret = env->open(*db_name, dbFlags, 0);
   args.GetReturnValue().Set(Nan::New(double(ret)));
 }
