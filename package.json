@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "bindings": "1.x.x",
+    "ffi": "^2.3.0",
     "nan": "^2.6.2"
   }
 }

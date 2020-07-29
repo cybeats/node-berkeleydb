@@ -235,6 +235,30 @@ function test_subdbs() {
   db3.close();
 }
 
+function test_associate() {
+  console.log("-- test_associate");
+  var db2 = new bdb.Db(dbenv);
+  var db3 = new bdb.Db(dbenv);
+  db3.setFlags(bdb.Flags.DB_DUP);
+  var txn = new bdb.DbTxn(dbenv);
+  var filename2 = getFilename();
+  var openRes2 = db2.open(filename2, "hash", bdb.DbTypes.DB_HASH);
+  console.log("opened primary hash", filename2, "ret=", openRes2);
+  assert(openRes2 == 0);
+  var openRes3 = db3.open(filename2, "tree", bdb.DbTypes.DB_BTREE);
+  console.log("opened secondary tree", filename2, "ret=", openRes3);
+  assert(openRes3 == 0);
+  db2.associate(txn, db3, (k,v) => v, bdb.Flags.DB_CREATE);
+  txn.commit();
+  db2.put("key1", "value1");
+  db2.put("key2", "value1");
+  // assert(db2.get("key1") == "value1");
+  // assert(db2.get("key2") == "value1");
+  console.log(db3.get("value1").toString());
+  db2.close();
+  db3.close();
+}
+
 test_put_get_del_trunc();
 test_json();
 test_encoding();
@@ -243,6 +267,7 @@ test_cursors();
 test_flags();
 test_hash();
 test_subdbs();
+test_associate();
 
 var closeDb = db.close();
 var closeEnv = dbenv.close();

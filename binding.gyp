@@ -11,9 +11,11 @@
         "src/flags.cc"
       ],
       "include_dirs": [
-        "../include",
         "<!(node -e \"require('nan')\")",
         "./deps/db-6.2.23/build_unix"
+      ],
+      'dependencies': [
+        'node_modules/ffi/deps/libffi/libffi.gyp:ffi'
       ],
       "link_settings": {
         "libraries": [

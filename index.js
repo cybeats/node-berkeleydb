@@ -29,10 +29,10 @@ function encode(val, opts={}) {
   return buf;
 }
 
-function appendTxn(args, opts={}) {
-  return opts.txn ? args.concat(opts.txn) : args;
+function appendOptions(args, opts={}) {
+  var newArgs = args.concat(opts.txn ? opts.txn : null);
+  return opts.flags ? newArgs.concat(opts.flags) : newArgs;
 }
-
 
 // load refs to objects to customize
 var Db = addon.Db;
@@ -43,17 +43,17 @@ var DbCursor = addon.DbCursor;
 Db.prototype.put = function (key, val, opts={}) {
   key = key.toString('utf8');
   val = encode(val, opts);
-  return this._put.apply(this, appendTxn([key, val], opts));
+  return this._put.apply(this, appendOptions([key, val], opts));
 };
 
 Db.prototype.del = function (key, opts={}) {
   key = key.toString('utf8');
-  return this._del.apply(this, appendTxn([key], opts));
+  return this._del.apply(this, appendOptions([key], opts));
 };
 
 Db.prototype.get = function (key, opts={}) {
   key = key.toString('utf8');
-  var val = this._get.apply(this, appendTxn([key], opts));
+  var val = this._get.apply(this, appendOptions([key], opts));
   return decode(val, opts);
 };
 

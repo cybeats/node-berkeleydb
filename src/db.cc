@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <uv.h>
+#include <ffi.h>
 
 using namespace v8;
 
@@ -31,6 +32,8 @@ void Db::Init(Local<Object> exports) {
   Nan::SetPrototypeMethod(tpl, "_put", Put);
   Nan::SetPrototypeMethod(tpl, "_get", Get);
   Nan::SetPrototypeMethod(tpl, "_del", Del);
+  Nan::SetPrototypeMethod(tpl, "associate", Associate);
+  Nan::SetPrototypeMethod(tpl, "setFlags", SetFlags);
 
   exports->Set(Nan::New("Db").ToLocalChecked(), tpl->GetFunction());
 }
@@ -78,6 +81,15 @@ int Db::get(DB_TXN *txn, DBT *key, DBT *data, u_int32_t flags) {
 int Db::del(DB_TXN *txn, DBT *key, u_int32_t flags) {
   return _db->del(_db, txn, key, flags);
 }
+
+int Db::associate(DB_TXN *txn, DB *sdb, int (*callback)(DB *secondary, const DBT *key, const DBT *data, DBT *result), int flags) {
+  return _db->associate(_db, txn, sdb, callback, flags);
+}
+
+int Db::set_flags(int flags) {
+  return _db->set_flags(_db, flags);
+}
+
 
 void Db::New(const Nan::FunctionCallbackInfo<Value>& args) {
   Db* store = new Db();
@@ -165,19 +177,18 @@ void Db::Put(const Nan::FunctionCallbackInfo<Value>& args) {
   }
 
   if (args.Length() > 2) {
-    if (! args[2]->IsObject()) {
-      Nan::ThrowTypeError("Third argument must be a DbTxn object");
-      return;
+    if (args[2]->IsObject()) {
+      Local<Object> wrapped = args[2]->ToObject();
+      DbTxn *_dbtxn = Nan::ObjectWrap::Unwrap<DbTxn>(wrapped);
+      dbtxn = _dbtxn->get_txn();
     }
-    Local<Object> wrapped = args[2]->ToObject();
-    DbTxn *_dbtxn = Nan::ObjectWrap::Unwrap<DbTxn>(wrapped);
-    dbtxn = _dbtxn->get_txn();
     // fprintf(stderr, "Db::Put - dbtxn = %p, _ = %p (wrapped %p)\n", dbtxn, _dbtxn, *wrapped);
   }
   Db* store = Nan::ObjectWrap::Unwrap<Db>(args.This());
 
   String::Utf8Value key(args[0]);
   Local<Object> buf = args[1]->ToObject();
+  int dbFlags((args[3]->IsInt32()) ? args[3]->Int32Value() : 0);
   
   DBT * key_dbt = new DBT();
   dbt_set(key_dbt, *key, strlen(*key));
@@ -186,7 +197,7 @@ void Db::Put(const Nan::FunctionCallbackInfo<Value>& args) {
           node::Buffer::Data(buf),
           node::Buffer::Length(buf));
 
-  int ret = store->put(dbtxn, key_dbt, data_dbt, 0);
+  int ret = store->put(dbtxn, key_dbt, data_dbt, dbFlags);
 
   args.GetReturnValue().Set(Nan::New(double(ret)));
 }
@@ -200,15 +211,14 @@ void Db::Get(const Nan::FunctionCallbackInfo<Value>& args) {
   }
 
   if (args.Length() > 1) {
-    if (! args[1]->IsObject()) {
-      Nan::ThrowTypeError("Second argument must be a DbTxn object");
-      return;
+    if (args[1]->IsObject()) {
+      DbTxn *_dbtxn = Nan::ObjectWrap::Unwrap<DbTxn>(args[1]->ToObject());
+      dbtxn = _dbtxn->get_txn();
     }
-    DbTxn *_dbtxn = Nan::ObjectWrap::Unwrap<DbTxn>(args[1]->ToObject());
-    dbtxn = _dbtxn->get_txn();
   }
 
   Db* store = Nan::ObjectWrap::Unwrap<Db>(args.This());
+  int dbFlags((args[2]->IsInt32()) ? args[2]->Int32Value() : 0);
 
   String::Utf8Value key(args[0]);
 
@@ -217,7 +227,13 @@ void Db::Get(const Nan::FunctionCallbackInfo<Value>& args) {
   DBT retbuf;
   dbt_set(&retbuf, 0, 0, DB_DBT_MALLOC);
 
-  store->get(dbtxn, &key_dbt, &retbuf, 0);
+  store->get(dbtxn, &key_dbt, &retbuf, dbFlags);
+
+  // fprintf(stderr, "get = %p\n", &key_dbt);
+  // fprintf(stderr, "get = %d\n", sizeof(retbuf));
+
+  // __builtin_dump_struct(&key_dbt, &printf);
+  // __builtin_dump_struct(&retbuf, &printf);
 
   Local<Object> buf = Nan::NewBuffer((char*)retbuf.data, retbuf.size, free_buf, NULL).ToLocalChecked();
 
@@ -233,23 +249,121 @@ void Db::Del(const Nan::FunctionCallbackInfo<Value>& args) {
   }
 
   if (args.Length() > 1) {
-    if (! args[1]->IsObject()) {
-      Nan::ThrowTypeError("Second argument must be a DbTxn object");
-      return;
+    if (args[1]->IsObject()) {
+      DbTxn *_dbtxn = Nan::ObjectWrap::Unwrap<DbTxn>(args[1]->ToObject());
+      dbtxn = _dbtxn->get_txn();
     }
-    DbTxn *_dbtxn = Nan::ObjectWrap::Unwrap<DbTxn>(args[1]->ToObject());
-    dbtxn = _dbtxn->get_txn();
   }
 
   Db* store = Nan::ObjectWrap::Unwrap<Db>(args.This());
+  int dbFlags((args[2]->IsInt32()) ? args[2]->Int32Value() : 0);
 
   String::Utf8Value key(args[0]);
   
   DBT key_dbt;
   dbt_set(&key_dbt, *key, strlen(*key));
   
-  int ret = store->del(dbtxn, &key_dbt, 0);
+  int ret = store->del(dbtxn, &key_dbt, dbFlags);
 
   args.GetReturnValue().Set(Nan::New(double(ret)));
 }
 
+void callback_binding(ffi_cif *cif, void *ret, void* args[], void *function)
+{
+  // DB *sdb = (DB*)(*((void **)args[0]));
+  DBT *key = (DBT*)(*((void **)args[1]));
+  DBT *data = (DBT*)(*((void **)args[2]));
+  DBT *result = (DBT*)(*((void **)args[3]));
+  Nan::Callback *callback = (Nan::Callback *)(function);
+
+  // fprintf(stderr, "callback_binding = %p\n", args[0]);
+  // fprintf(stderr, "callback_binding = %p\n", args[1]);
+  // fprintf(stderr, "callback_binding = %p\n", args[2]);
+  // fprintf(stderr, "callback_binding = %p\n", args[3]);
+
+  // __builtin_dump_struct(key, &printf);
+  // __builtin_dump_struct(data, &printf);
+  // __builtin_dump_struct(result, &printf);
+
+  // String::Utf8Value ((char*)key->data);
+  Isolate* isolate = Nan::GetCurrentContext()->Global()->GetIsolate();
+  Local<String> keyStr = String::NewFromUtf8(isolate, (char*)(key->data));
+
+  Local<Value> arguments[2] = {
+    keyStr,
+    Nan::NewBuffer((char*)data->data, data->size, free_buf, NULL).ToLocalChecked()
+  };
+
+  Local<Object> buf = callback->Call(2, arguments)->ToObject();
+  
+  dbt_set(result, node::Buffer::Data(buf), node::Buffer::Length(buf));
+
+  *(ffi_arg *)ret = 0;
+}
+
+void Db::Associate(const Nan::FunctionCallbackInfo<Value>& args) {
+  DB_TXN * dbtxn = NULL;
+  DB * sdb = NULL;
+
+  if (!(args.Length() > 0) || !(args[0]->IsObject())) {
+    Nan::ThrowTypeError("First argument must be a DbTxn");
+    return;
+  }
+
+  if (!(args.Length() > 1) || !(args[1]->IsObject())) {
+    Nan::ThrowTypeError("Second argument must be a Db object (secondary)");
+    return;
+  }
+
+  if (!(args.Length() > 2) || !(args[2]->IsFunction())) {
+    Nan::ThrowTypeError("Third argument must be a function");
+    return;
+  }
+
+  Db* store = Nan::ObjectWrap::Unwrap<Db>(args.This());
+  
+  DbTxn *_dbtxn = Nan::ObjectWrap::Unwrap<DbTxn>(args[0]->ToObject());
+  dbtxn = _dbtxn->get_txn();
+
+  Db *_sdb = Nan::ObjectWrap::Unwrap<Db>(args[1]->ToObject());
+  sdb = _sdb->get_db();
+  
+  Nan::Callback *callback = new Nan::Callback(Local<Function>::Cast(args[2]));
+
+  int dbFlags((args[3]->IsInt32()) ? args[3]->Int32Value() : DB_CREATE);
+
+  ffi_cif *cif = new ffi_cif;
+  ffi_type **ffiargs = (ffi_type **)malloc(sizeof(ffi_type)*4);
+
+  void *bound_callback;
+  int ret = 0;
+
+  ffi_closure *closure = (ffi_closure *)ffi_closure_alloc(sizeof(ffi_closure), &bound_callback);
+
+  if (closure) {
+    ffiargs[0] = &ffi_type_pointer;
+    ffiargs[1] = &ffi_type_pointer;
+    ffiargs[2] = &ffi_type_pointer;
+    ffiargs[3] = &ffi_type_pointer;
+
+    if (ffi_prep_cif(cif, FFI_DEFAULT_ABI, 4, &ffi_type_uint32, ffiargs) == FFI_OK) {
+      if (ffi_prep_closure_loc(closure, cif, callback_binding, callback, bound_callback) == FFI_OK) {
+        ret = store->associate(dbtxn, sdb, (int (*)(DB *, const DBT *, const DBT *, DBT *))(bound_callback), dbFlags);
+      }
+    }
+  }
+  args.GetReturnValue().Set(Nan::New(double(ret)));
+}
+
+void Db::SetFlags(const Nan::FunctionCallbackInfo<v8::Value>& args) {
+  if (!(args.Length() > 0) || !(args[0]->IsInt32())) {
+    Nan::ThrowTypeError("First argument must be an int");
+    return;
+  }
+  
+  Db* store = Nan::ObjectWrap::Unwrap<Db>(args.This());
+  int dbFlags(args[0]->Int32Value());
+  int ret = store->set_flags(dbFlags);
+  
+  args.GetReturnValue().Set(Nan::New(double(ret)));
+}
