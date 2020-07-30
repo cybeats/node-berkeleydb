@@ -12,7 +12,7 @@
       ],
       "include_dirs": [
         "<!(node -e \"require('nan')\")",
-        "./deps/db-6.2.23/build_unix"
+        "./deps/db-18.1.40/build_unix"
       ],
       'dependencies': [
         'node_modules/ffi/deps/libffi/libffi.gyp:ffi'
@@ -20,8 +20,8 @@
       "link_settings": {
         "libraries": [
           "-L../lib",
-          "-L../deps/db-6.2.23/build_unix",
-          "-ldb-6.2"
+          "-L../deps/db-18.1.40/build_unix",
+          "-ldb-18.1"
         ]
       }
     }
