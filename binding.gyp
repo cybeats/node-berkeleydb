@@ -15,7 +15,7 @@
         "./deps/db-18.1.40/build_unix"
       ],
       'dependencies': [
-        'node_modules/ffi/deps/libffi/libffi.gyp:ffi'
+        "<!(node -e \"console.log(require.resolve('ffi/deps/libffi/libffi.gyp')+':ffi')\")"
       ],
       "link_settings": {
         "libraries": [
