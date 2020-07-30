@@ -1,6 +1,6 @@
 {
   "name": "berkeleydb",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Node.js bindings for Berkeley DB 6.x (based on dbstore by Lee Iverson)",
   "author": "Gene Hallman",
   "homepage": "http://github.com/genehallman/node-berkeleydb",
