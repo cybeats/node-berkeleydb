@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "bindings": "1.x.x",
-    "ffi": "^2.3.0",
+    "ffi-napi": "^3.0.1",
     "nan": "^2.6.2"
   }
 }
